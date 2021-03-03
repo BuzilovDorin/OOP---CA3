@@ -1,5 +1,6 @@
 from requests import get, post
 import os
+from os.path import basename
 import json
 from dateutil import parser
 import datetime
@@ -111,14 +112,16 @@ sec = LocalGetSections(courseid)
 print(json.dumps(sec.getsections[1]['summary'], indent=4, sort_keys=True))
 
 
-files_prefix = os.path.abspath("./")
-
-
 def Moodle_Updater():
     for i in os.scandir():
         if i.is_dir():
             for f in os.scandir(i.path):
-                print(i.path)
+                print(os.path.abspath(".") + f.path.lstrip("."))
+                # Check if parent folder is semester 1 or 2 [ooapp , ooapp2]
+                if not any(d.isdigit() for d in basename(os.path.abspath("."))):
+                    print("semester1")
+                else:
+                    print("semester2")
 
 
 Moodle_Updater()
