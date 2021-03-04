@@ -1,12 +1,17 @@
-from bs4 import BeautifulSoup
+from chromedriver_py import binary_path
+import bs4
 from urllib import request
-from requests import get, post
+import requests
 import os
 from os.path import basename
 import json
 from dateutil import parser
 import datetime
 import re
+from pprint import pprint
+import selenium
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
 
 ################################################
 # Module variables to connect to moodle api:
@@ -135,7 +140,11 @@ def Moodle_Update(Sem, WeekNum, URL, Title):
 
 
 def Pull_Class_Recordings(URL):
-    pass
+    driver = webdriver.Chrome(ChromeDriverManager().install())
+    browser = webdriver.Chrome(executable_path=binary_path).get(
+        "https://www.google.com/")
+    print(browser.page_source)
 
 
-Local_Files_Check()
+Pull_Class_Recordings(Recordings_URL)
+# Local_Files_Check()
