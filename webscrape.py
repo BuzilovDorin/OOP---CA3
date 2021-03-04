@@ -12,6 +12,7 @@ from pprint import pprint
 import selenium
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
+import time
 
 ################################################
 # Module variables to connect to moodle api:
@@ -140,9 +141,9 @@ def Moodle_Update(Sem, WeekNum, URL, Title):
 
 
 def Pull_Class_Recordings(URL):
-    driver = webdriver.Chrome(ChromeDriverManager().install())
-    browser = webdriver.Chrome(executable_path=binary_path).get(
-        "https://www.google.com/")
+    browser = webdriver.Chrome(executable_path=binary_path)
+    browser.get(URL)
+    time.sleep(5)
     print(browser.page_source)
 
 
