@@ -4,6 +4,7 @@ from os.path import basename
 import json
 from dateutil import parser
 import datetime
+from pprint import pprint
 
 # Module variables to connect to moodle api:
 # Insert token and URL for your site here.
@@ -80,51 +81,54 @@ class LocalUpdateSections(object):
 ################################################
 
 
-# Get all sections of the course.
-sec = LocalGetSections(courseid)
-
-# Output readable JSON, but print only summary
-print(json.dumps(sec.getsections[1]['summary'], indent=4, sort_keys=True))
-
-# Split the section name by dash and convert the date into the timestamp, it takes the current year, so think of a way for making sure it has the correct year!
-month = parser.parse(list(sec.getsections)[1]['name'].split('-')[0])
-# Show the resulting timestamp
-print(month)
-# Extract the week number from the start of the calendar year
-print(month.strftime("%V"))
-
-#  Assemble the payload
-data = [{'type': 'num', 'section': 0, 'summary': '', 'summaryformat': 1, 'visible': 1,
-         'highlight': 0, 'sectionformatoptions': [{'name': 'level', 'value': '1'}]}]
-
-# Assemble the correct summary
-summary = '<a href="https://mikhail-cct.github.io/ca3-test/wk1/">Week 1: Introduction</a><br>'
-
-# Assign the correct summary
-data[0]['summary'] = summary
-
-# Set the correct section number
-data[0]['section'] = 1
-
-# Write the data back to Moodle
-sec_write = LocalUpdateSections(courseid, data)
-sec = LocalGetSections(courseid)
-print(json.dumps(sec.getsections[1]['summary'], indent=4, sort_keys=True))
+sem1_start_week = "39"
+sem2_start_week = "4 January"
+sem = None
 
 
 def Moodle_Updater():
+    # Check if parent folder is semester 1 or 2 [ooapp , ooapp2]
+    if not any(d.isdigit() for d in basename(os.path.abspath("."))):
+        sem = sem1_start_week
+    else:
+        sem = sem2_start_week
+
     for i in os.scandir():
-        if i.is_dir():
+        if i.is_dir() and "wk" in i.name:
+            # Only files within folders containing "wk" name convention
             for f in os.scandir(i.path):
-                print(os.path.abspath(".") + f.path.lstrip("."))
-                # Check if parent folder is semester 1 or 2 [ooapp , ooapp2]
-                if not any(d.isdigit() for d in basename(os.path.abspath("."))):
-                    print("semester1")
-                else:
-                    print("semester2")
+                a = os.path.abspath(".") + f.path.lstrip(".")
+                if any(n in a for n in [".html", ".pdf"]):
+                    # Get all sections of the course.
+                    sec = LocalGetSections(courseid)
+                    print(sec.getsections[1]["summary"])
+                    # Split the section name by dash and convert the date into the timestamp, it takes the current year, so think of a way for making sure it has the correct year!
+                    month = parser.parse(list(sec.getsections)[
+                                         1]['name'].split('-')[0])
+                    # Extract the week number from the start of the calendar year
+                    sem_week = month.strftime("%V")
+                    #  Assemble the payload
+                    data = [{'type': 'num', 'section': 0, 'summary': '', 'summaryformat': 1, 'visible': 1,
+                             'highlight': 0, 'sectionformatoptions': [{'name': 'level', 'value': '1'}]}]
+                    # Assemble the correct summary
+                    if ".html" in a:
+                        # summary = '<a href=' + a + '>' + "Week 1: Introduction" + '</a><br>'
+                        None
+                    else:
+                        summary = '<a href=' + a + '>' + f.name + '</a><br>'
+                    # Assign the correct summary
+                    data[0]['summary'] = summary
+                    # Set the correct section number
+                    data[0]['section'] = 1
+                    # Write the data back to Moodle
+                    sec_write = LocalUpdateSections(courseid, data)
+                    sec = LocalGetSections(courseid)
+                    print(json.dumps(
+                        sec.getsections[1]['summary'], indent=4, sort_keys=True))
 
 
 Moodle_Updater()
+
 
 # def Files():
 #     with open('FilesLog.json', "r") as f:
