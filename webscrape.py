@@ -104,42 +104,40 @@ def Moodle_Updater():
                 if any(n in href_link for n in [".html", ".pdf"]):
                     if ".html" in href_link:
                         soup = BeautifulSoup(open(href_link), "html.parser")
-                        title = soup.find('title')
-                        Compare_Moodle(sem, wk_index, href_link, title.string)
+                        title = soup.find('title').string.encode(
+                            'ascii', 'ignore').decode()
+                        Compare_Moodle(sem, int(wk_index), href_link, title)
 
                     else:
-                        Compare_Moodle(sem, wk_index, href_link, f.name)
+                        Compare_Moodle(sem, int(wk_index), href_link, f.name)
 
 
 def Compare_Moodle(Sem, WeekNum, URL, Title):
-    print(Sem, WeekNum, URL, Title)
-
     # Get all sections of the course.
     sec = LocalGetSections(courseid)
-    print(sec.getsections[1]["summary"])
+    prev_summary = sec.getsections[WeekNum]['summary']
     # Split the section name by dash and convert the date into the timestamp, it takes the current year, so think of a way for making sure it has the correct year!
-    month = parser.parse(list(sec.getsections)[
-         1]['name'].split('-')[0])
-     # Extract the week number from the start of the calendar year
-     sem_week = month.strftime("%V")
-      #  Assemble the payload
-      data = [{'type': 'num', 'section': 0, 'summary': '', 'summaryformat': 1, 'visible': 1,
-                'highlight': 0, 'sectionformatoptions': [{'name': 'level', 'value': '1'}]}]
-       # Assemble the correct summary
-       if ".html" in a:
-            summary = '<a href=' + a + '>' + i.name + " slides" + '</a><br>'
-            None
-        else:
-            summary = '<a href=' + a + '>' + f.name + '</a><br>'
+    month = parser.parse(list(sec.getsections)[WeekNum]['name'].split('-')[0])
+    # Extract the week number from the start of the calendar year
+    sem_week = month.strftime("%V")
+    #  Assemble the payload
+    data = [{'type': 'num', 'section': 0, 'summary': '', 'summaryformat': 1, 'visible': 1,
+             'highlight': 0, 'sectionformatoptions': [{'name': 'level', 'value': '1'}]}]
+    # Assemble the correct summary
+    summary = '<a href=' + URL + '>' + Title + '</a><br>'
+    if summary in prev_summary:
+        pass
+    else:
+        summary = prev_summary + ' ' + summary
         # Assign the correct summary
         data[0]['summary'] = summary
         # Set the correct section number
-        data[0]['section'] = wk_index
+        data[0]['section'] = WeekNum
         # Write the data back to Moodle
         sec_write = LocalUpdateSections(courseid, data)
         sec = LocalGetSections(courseid)
-        print(json.dumps(
-            sec.getsections[1]['summary'], indent=4, sort_keys=True))
+        print(
+            "After:"+json.dumps(sec.getsections[WeekNum]['summary'], indent=4, sort_keys=True))
 
 
 def Moodle_Update():
@@ -183,7 +181,7 @@ def Moodle_Update():
                     sec_write = LocalUpdateSections(courseid, data)
                     sec = LocalGetSections(courseid)
                     print(json.dumps(
-                        sec.getsections[1]['summary'], indent=4, sort_keys=True))
+                        sec.getsections[wk_index]['summary'], indent=4, sort_keys=True))
 
 
 Moodle_Updater()
