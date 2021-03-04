@@ -6,25 +6,29 @@ from os.path import basename
 import json
 from dateutil import parser
 import datetime
-from pprint import pprint
+import re
 
+################################################
 # Module variables to connect to moodle api:
 # Insert token and URL for your site here.
-# Mind that the endpoint can start with "/moodle" depending on your installation.
+# Insert URL for class recordings here
+# Define your unique semester start dates here.
+################################################
 KEY = "8cc87cf406775101c2df87b07b3a170d"
 URL = "https://034f8a1dcb5c.eu.ngrok.io"
 ENDPOINT = "/webservice/rest/server.php"
+Recordings_URL = "https://drive.google.com/drive/folders/1pFHUrmpLv9gEJsvJYKxMdISuQuQsd_qX"
 courseid = "20"
+sem1_start_week = "39"
+sem2_start_week = "1"
 
 
+################################################
+# Rest-Api classes
+################################################
 def rest_api_parameters(in_args, prefix='', out_dict=None):
     """Transform dictionary/array structure to a flat dictionary, with key names
-    defining the structure.
-    Example usage:
-    >>> rest_api_parameters({'courses':[{'id':1,'name': 'course1'}]})
-    {'courses[0][id]':1,
-     'courses[0][name]':'course1'}
-    """
+    defining the structure."""
     if out_dict == None:
         out_dict = {}
     if not type(in_args) in (list, dict):
@@ -44,11 +48,7 @@ def rest_api_parameters(in_args, prefix='', out_dict=None):
 
 
 def call(fname, **kwargs):
-    """Calls moodle API function with function name fname and keyword arguments.
-    Example:
-    >>> call_mdl_function('core_course_update_courses',
-                           courses = [{'id': 1, 'fullname': 'My favorite course'}])
-    """
+    """Calls moodle API function with function name fname and keyword arguments."""
     parameters = rest_api_parameters(kwargs)
     parameters.update(
         {"wstoken": KEY, 'moodlewsrestformat': 'json', "wsfunction": fname})
@@ -57,10 +57,6 @@ def call(fname, **kwargs):
     if type(response) == dict and response.get('exception'):
         raise SystemError("Error calling Moodle API\n", response)
     return response
-
-################################################
-# Rest-Api classes
-################################################
 
 
 class LocalGetSections(object):
@@ -80,13 +76,10 @@ class LocalUpdateSections(object):
 
 
 ################################################
-# Example
+# Moodle_Auto_Updater.py
 ################################################
-sem1_start_week = "39"
-sem2_start_week = "1"
 
-
-def Moodle_Updater():
+def Local_Files_Check():
     # Checking directory name to identify semester 1 or semester 2 [OOAPP , OOAPP2]
     if not any(d.isdigit() for d in basename(os.path.abspath("."))):
         print(basename(os.path.abspath(".")) + " - semester 1")
@@ -98,21 +91,22 @@ def Moodle_Updater():
         if i.is_dir() and "wk" in i.name:
             # Only files within folders containing "wk" name convention
             wk_index = ''.join([n for n in i.name if n.isdigit()])
-            print(wk_index)
             for f in os.scandir(i.path):
                 href_link = os.path.abspath(".") + f.path.lstrip(".")
+                # Only files within folders ending with .html or .pdf are valid
                 if any(n in href_link for n in [".html", ".pdf"]):
                     if ".html" in href_link:
                         soup = BeautifulSoup(open(href_link), "html.parser")
                         title = soup.find('title').string.encode(
                             'ascii', 'ignore').decode()
-                        Compare_Moodle(sem, int(wk_index), href_link, title)
+                        Moodle_Update(sem, int(wk_index), href_link, title)
 
                     else:
-                        Compare_Moodle(sem, int(wk_index), href_link, f.name)
+                        Moodle_Update(sem, int(wk_index), href_link, f.name)
+                Pull_Class_Recordings(Recordings_URL)
 
 
-def Compare_Moodle(Sem, WeekNum, URL, Title):
+def Moodle_Update(Sem, WeekNum, URL, Title):
     # Get all sections of the course.
     sec = LocalGetSections(courseid)
     prev_summary = sec.getsections[WeekNum]['summary']
@@ -126,11 +120,11 @@ def Compare_Moodle(Sem, WeekNum, URL, Title):
     # Assemble the correct summary
     summary = '<a href=' + URL + '>' + Title + '</a><br>'
     if summary in prev_summary:
+        # If the summary already contains this file then just skip to the next file otherwise update
         pass
     else:
-        summary = prev_summary + ' ' + summary
         # Assign the correct summary
-        data[0]['summary'] = summary
+        data[0]['summary'] = prev_summary + ' ' + summary
         # Set the correct section number
         data[0]['section'] = WeekNum
         # Write the data back to Moodle
@@ -140,48 +134,8 @@ def Compare_Moodle(Sem, WeekNum, URL, Title):
             "After:"+json.dumps(sec.getsections[WeekNum]['summary'], indent=4, sort_keys=True))
 
 
-def Moodle_Update():
-    sem = None
-    # Check if parent folder is semester 1 or 2 [ooapp , ooapp2]
-    if not any(d.isdigit() for d in basename(os.path.abspath("."))):
-        sem = sem1_start_week
-    else:
-        sem = sem2_start_week
-
-    wk_index = 0
-    for i in os.scandir():
-        if i.is_dir() and "wk" in i.name:
-            wk_index += 1
-            # Only files within folders containing "wk" name convention
-            for f in os.scandir(i.path):
-                a = os.path.abspath(".") + f.path.lstrip(".")
-                if any(n in a for n in [".html", ".pdf"]):
-                    # Get all sections of the course.
-                    sec = LocalGetSections(courseid)
-                    print(sec.getsections[1]["summary"])
-                    # Split the section name by dash and convert the date into the timestamp, it takes the current year, so think of a way for making sure it has the correct year!
-                    month = parser.parse(list(sec.getsections)[
-                                         1]['name'].split('-')[0])
-                    # Extract the week number from the start of the calendar year
-                    sem_week = month.strftime("%V")
-                    #  Assemble the payload
-                    data = [{'type': 'num', 'section': 0, 'summary': '', 'summaryformat': 1, 'visible': 1,
-                             'highlight': 0, 'sectionformatoptions': [{'name': 'level', 'value': '1'}]}]
-                    # Assemble the correct summary
-                    if ".html" in a:
-                        summary = '<a href=' + a + '>' + i.name + " slides" + '</a><br>'
-                        None
-                    else:
-                        summary = '<a href=' + a + '>' + f.name + '</a><br>'
-                    # Assign the correct summary
-                    data[0]['summary'] = summary
-                    # Set the correct section number
-                    data[0]['section'] = wk_index
-                    # Write the data back to Moodle
-                    sec_write = LocalUpdateSections(courseid, data)
-                    sec = LocalGetSections(courseid)
-                    print(json.dumps(
-                        sec.getsections[wk_index]['summary'], indent=4, sort_keys=True))
+def Pull_Class_Recordings(URL):
+    pass
 
 
-Moodle_Updater()
+Local_Files_Check()
