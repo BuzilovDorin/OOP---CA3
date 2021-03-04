@@ -1,3 +1,5 @@
+from bs4 import BeautifulSoup
+from urllib import request
 from requests import get, post
 import os
 from os.path import basename
@@ -76,25 +78,82 @@ class LocalUpdateSections(object):
         self.updatesections = call(
             'local_wsmanagesections_update_sections', courseid=cid, sections=sectionsdata)
 
+
 ################################################
 # Example
 ################################################
-
-
 sem1_start_week = "39"
-sem2_start_week = "4 January"
-sem = None
+sem2_start_week = "1"
 
 
 def Moodle_Updater():
+    # Checking directory name to identify semester 1 or semester 2 [OOAPP , OOAPP2]
+    if not any(d.isdigit() for d in basename(os.path.abspath("."))):
+        print(basename(os.path.abspath(".")) + " - semester 1")
+        sem = sem1_start_week
+    else:
+        print(basename(os.path.abspath(".")) + " - semester 2")
+        sem = sem2_start_week
+    for i in os.scandir():
+        if i.is_dir() and "wk" in i.name:
+            # Only files within folders containing "wk" name convention
+            wk_index = ''.join([n for n in i.name if n.isdigit()])
+            print(wk_index)
+            for f in os.scandir(i.path):
+                href_link = os.path.abspath(".") + f.path.lstrip(".")
+                if any(n in href_link for n in [".html", ".pdf"]):
+                    if ".html" in href_link:
+                        soup = BeautifulSoup(open(href_link), "html.parser")
+                        title = soup.find('title')
+                        Compare_Moodle(sem, wk_index, href_link, title.string)
+
+                    else:
+                        Compare_Moodle(sem, wk_index, href_link, f.name)
+
+
+def Compare_Moodle(Sem, WeekNum, URL, Title):
+    print(Sem, WeekNum, URL, Title)
+
+    # Get all sections of the course.
+    sec = LocalGetSections(courseid)
+    print(sec.getsections[1]["summary"])
+    # Split the section name by dash and convert the date into the timestamp, it takes the current year, so think of a way for making sure it has the correct year!
+    month = parser.parse(list(sec.getsections)[
+         1]['name'].split('-')[0])
+     # Extract the week number from the start of the calendar year
+     sem_week = month.strftime("%V")
+      #  Assemble the payload
+      data = [{'type': 'num', 'section': 0, 'summary': '', 'summaryformat': 1, 'visible': 1,
+                'highlight': 0, 'sectionformatoptions': [{'name': 'level', 'value': '1'}]}]
+       # Assemble the correct summary
+       if ".html" in a:
+            summary = '<a href=' + a + '>' + i.name + " slides" + '</a><br>'
+            None
+        else:
+            summary = '<a href=' + a + '>' + f.name + '</a><br>'
+        # Assign the correct summary
+        data[0]['summary'] = summary
+        # Set the correct section number
+        data[0]['section'] = wk_index
+        # Write the data back to Moodle
+        sec_write = LocalUpdateSections(courseid, data)
+        sec = LocalGetSections(courseid)
+        print(json.dumps(
+            sec.getsections[1]['summary'], indent=4, sort_keys=True))
+
+
+def Moodle_Update():
+    sem = None
     # Check if parent folder is semester 1 or 2 [ooapp , ooapp2]
     if not any(d.isdigit() for d in basename(os.path.abspath("."))):
         sem = sem1_start_week
     else:
         sem = sem2_start_week
 
+    wk_index = 0
     for i in os.scandir():
         if i.is_dir() and "wk" in i.name:
+            wk_index += 1
             # Only files within folders containing "wk" name convention
             for f in os.scandir(i.path):
                 a = os.path.abspath(".") + f.path.lstrip(".")
@@ -112,14 +171,14 @@ def Moodle_Updater():
                              'highlight': 0, 'sectionformatoptions': [{'name': 'level', 'value': '1'}]}]
                     # Assemble the correct summary
                     if ".html" in a:
-                        # summary = '<a href=' + a + '>' + "Week 1: Introduction" + '</a><br>'
+                        summary = '<a href=' + a + '>' + i.name + " slides" + '</a><br>'
                         None
                     else:
                         summary = '<a href=' + a + '>' + f.name + '</a><br>'
                     # Assign the correct summary
                     data[0]['summary'] = summary
                     # Set the correct section number
-                    data[0]['section'] = 1
+                    data[0]['section'] = wk_index
                     # Write the data back to Moodle
                     sec_write = LocalUpdateSections(courseid, data)
                     sec = LocalGetSections(courseid)
@@ -128,34 +187,3 @@ def Moodle_Updater():
 
 
 Moodle_Updater()
-
-
-# def Files():
-#     with open('FilesLog.json', "r") as f:
-#         data = json.load(f)
-#         if data["Initialize"] == "yes":
-#             # Mark it off as no so the script will no every subsequent run will not be the first time
-#             # data["Initialize"] = "no"
-#             with open('FilesLog.json', 'w') as file:
-#                 json.dump(data, file)
-#             System_Init()
-#         else:
-#             System_Update()
-
-# # Do this only the first time the script is run
-# def System_Init():
-#     upload_files = []
-#     # https://github.com/mikhail-cct/ca3-test/blob/master/wk1/index.html
-#     # Search the folder of which this script is placed within
-#     subfolders = [f.path for f in os.scandir() if f.is_dir()]
-#     files = [f.path for f in os.scandir(subfolders[0])]
-#     for i in os.scandir():
-#         if i.is_dir():
-#             for f in os.scandir(i.path):
-#                 upload_files.append(f.path)
-
-# def System_Update():
-#     # update the files on the ngrok server
-#     return None
-
-# Files_Check()
