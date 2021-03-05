@@ -159,9 +159,18 @@ def Pull_Class_Recordings(URL, record_Checklist):
             sem_week = sem_week[1]
         vids[("wk" + sem_week + " recording " + vid_title[:24])
              ] = 'https://drive.google.com/file/d/' + i.parent.parent.parent.parent.attrs['data-id']
+    for record in record_Checklist:
+        for key in list(vids):
+            key_filtered = re.search("wk(\d+)", key)
+            print(key_filtered.group())
+            if key_filtered.group() in record:
+                print("matching:" + record)
+                vids.pop(key)
+            else:
+                pass
     print(record_Checklist)
-    print(vids)
+    pprint(vids)
 
 
-# Pull_Class_Recordings(Recordings_URL)
-Local_Files_Check()
+Pull_Class_Recordings(Recordings_URL)
+# Local_Files_Check()
