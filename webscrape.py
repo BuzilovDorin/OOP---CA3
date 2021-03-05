@@ -1,3 +1,4 @@
+from urllib.request import urlopen
 from chromedriver_py import binary_path
 import bs4
 from urllib import request
@@ -9,9 +10,7 @@ from dateutil import parser
 import datetime
 import re
 from pprint import pprint
-import selenium
-from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
+from bs4 import BeautifulSoup
 import time
 
 ################################################
@@ -141,10 +140,20 @@ def Moodle_Update(Sem, WeekNum, URL, Title):
 
 
 def Pull_Class_Recordings(URL):
-    browser = webdriver.Chrome(executable_path=binary_path)
-    browser.get(URL)
-    time.sleep(5)
-    print(browser.page_source)
+    data = urlopen(URL)
+    soup = BeautifulSoup(data, 'lxml')
+    video = soup.find_all('div', class_='Q5txwe')
+    vids = []
+    for i in reversed(video):
+        vid_title = i.text.encode('ascii', 'ignore').decode()
+        print(i.text)
+        month = parser.parse((vid_title[:10].split('-')[0]))
+        print(month)
+        sem_week = month.strftime("%V")
+        if sem_week[0] == "0":
+            sem_week = sem_week[1]
+        vids.append("wk" + sem_week + " class recording " + vid_title[:24])
+    pprint(vids)
 
 
 Pull_Class_Recordings(Recordings_URL)
