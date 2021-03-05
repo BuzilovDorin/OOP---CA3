@@ -115,7 +115,7 @@ def Local_Files_Check():
                         Moodle_Update(sem, int(wk_index), href_link, f.name)
                         if "wk"+wk_index not in recordings_Checklist:
                             recordings_Checklist.append("wk"+wk_index)
-    Pull_Class_Recordings(Recordings_URL, recordings_Checklist)
+    Pull_Class_Recordings(sem, Recordings_URL, recordings_Checklist)
 
 
 def Moodle_Update(Sem, WeekNum, URL, Title):
@@ -146,7 +146,7 @@ def Moodle_Update(Sem, WeekNum, URL, Title):
             "After:"+json.dumps(sec.getsections[WeekNum]['summary'], indent=4, sort_keys=True))
 
 
-def Pull_Class_Recordings(URL, record_Checklist):
+def Pull_Class_Recordings(Sem, URL, record_Checklist):
     response = urlopen(URL)
     soup = BeautifulSoup(response, 'lxml')
     video = soup.find_all('div', class_='Q5txwe')
@@ -162,15 +162,12 @@ def Pull_Class_Recordings(URL, record_Checklist):
     for record in record_Checklist:
         for key in list(vids):
             key_filtered = re.search("wk(\d+)", key)
-            print(key_filtered.group())
             if key_filtered.group() in record:
-                print("matching:" + record)
+                Moodle_Update(Sem, int(record[2:]), vids[key], key)
                 vids.pop(key)
             else:
                 pass
-    print(record_Checklist)
-    pprint(vids)
 
 
-Pull_Class_Recordings(Recordings_URL)
-# Local_Files_Check()
+# Pull_Class_Recordings(Recordings_URL)
+Local_Files_Check()
