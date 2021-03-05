@@ -92,13 +92,16 @@ def Local_Files_Check():
     else:
         print(basename(os.path.abspath(".")) + " - semester 2")
         sem = sem2_start_week
+    # Pull the recordings from the google drive
+    Pull_Class_Recordings(Recordings_URL)
+    # Scan local files
     for i in os.scandir():
         if i.is_dir() and "wk" in i.name:
             # Only files within folders containing "wk" name convention
             wk_index = ''.join([n for n in i.name if n.isdigit()])
             for f in os.scandir(i.path):
                 href_link = os.path.abspath(".") + f.path.lstrip(".")
-                # Only files within folders ending with .html or .pdf are valid
+                # Only files ending with .html or .pdf are valid
                 if any(n in href_link for n in [".html", ".pdf"]):
                     if ".html" in href_link:
                         soup = BeautifulSoup(open(href_link), "html.parser")
@@ -108,7 +111,6 @@ def Local_Files_Check():
 
                     else:
                         Moodle_Update(sem, int(wk_index), href_link, f.name)
-                Pull_Class_Recordings(Recordings_URL)
 
 
 def Moodle_Update(Sem, WeekNum, URL, Title):
@@ -140,21 +142,20 @@ def Moodle_Update(Sem, WeekNum, URL, Title):
 
 
 def Pull_Class_Recordings(URL):
-    data = urlopen(URL)
-    soup = BeautifulSoup(data, 'lxml')
+    response = urlopen(URL)
+    soup = BeautifulSoup(response, 'lxml')
     video = soup.find_all('div', class_='Q5txwe')
-    vids = []
+    vids = {}
     for i in reversed(video):
         vid_title = i.text.encode('ascii', 'ignore').decode()
-        print(i.text)
-        month = parser.parse((vid_title[:10].split('-')[0]))
-        print(month)
+        month = datetime.datetime.strptime(vid_title[:10], '%Y-%m-%d')
         sem_week = month.strftime("%V")
         if sem_week[0] == "0":
             sem_week = sem_week[1]
-        vids.append("wk" + sem_week + " class recording " + vid_title[:24])
+        vids[("wk" + sem_week + " recording " + vid_title[:24])
+             ] = 'https://drive.google.com/file/d/' + i.parent.parent.parent.parent.attrs['data-id']
     pprint(vids)
 
 
-Pull_Class_Recordings(Recordings_URL)
-# Local_Files_Check()
+# Pull_Class_Recordings(Recordings_URL)
+Local_Files_Check()
