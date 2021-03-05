@@ -2,6 +2,7 @@ from urllib.request import urlopen
 from chromedriver_py import binary_path
 import bs4
 from urllib import request
+from requests import post
 import requests
 import os
 from os.path import basename
@@ -92,9 +93,8 @@ def Local_Files_Check():
     else:
         print(basename(os.path.abspath(".")) + " - semester 2")
         sem = sem2_start_week
-    # Pull the recordings from the google drive
-    Pull_Class_Recordings(Recordings_URL)
     # Scan local files
+    recordings_Checklist = []
     for i in os.scandir():
         if i.is_dir() and "wk" in i.name:
             # Only files within folders containing "wk" name convention
@@ -108,9 +108,14 @@ def Local_Files_Check():
                         title = soup.find('title').string.encode(
                             'ascii', 'ignore').decode()
                         Moodle_Update(sem, int(wk_index), href_link, title)
+                        if "wk"+wk_index not in recordings_Checklist:
+                            recordings_Checklist.append("wk"+wk_index)
 
                     else:
                         Moodle_Update(sem, int(wk_index), href_link, f.name)
+                        if "wk"+wk_index not in recordings_Checklist:
+                            recordings_Checklist.append("wk"+wk_index)
+    Pull_Class_Recordings(Recordings_URL, recordings_Checklist)
 
 
 def Moodle_Update(Sem, WeekNum, URL, Title):
@@ -141,7 +146,7 @@ def Moodle_Update(Sem, WeekNum, URL, Title):
             "After:"+json.dumps(sec.getsections[WeekNum]['summary'], indent=4, sort_keys=True))
 
 
-def Pull_Class_Recordings(URL):
+def Pull_Class_Recordings(URL, record_Checklist):
     response = urlopen(URL)
     soup = BeautifulSoup(response, 'lxml')
     video = soup.find_all('div', class_='Q5txwe')
@@ -154,7 +159,8 @@ def Pull_Class_Recordings(URL):
             sem_week = sem_week[1]
         vids[("wk" + sem_week + " recording " + vid_title[:24])
              ] = 'https://drive.google.com/file/d/' + i.parent.parent.parent.parent.attrs['data-id']
-    pprint(vids)
+    print(record_Checklist)
+    print(vids)
 
 
 # Pull_Class_Recordings(Recordings_URL)
