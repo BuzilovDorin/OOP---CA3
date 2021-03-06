@@ -88,7 +88,8 @@ class LocalUpdateSections(object):
 ################################################
 
 def Local_Files_Check():
-    # Checking directory name to identify semester 1 or semester 2 [OOAPP , OOAPP2]
+    # Checking directory name to identify semester 1 or semester 2 [ooapp , ooapp2]
+    # Getting start date of semester
     if not any(d.isdigit() for d in basename(os.path.abspath("."))):
         month = datetime.datetime.strptime(sem1_start_week, '%Y-%m-%d')
         sem = month.strftime("%V")
@@ -105,6 +106,8 @@ def Local_Files_Check():
     sec = LocalGetSections(courseid)
     moodle_Sections = {}
     sections_count = 0
+    # Pulling all moodle sections and matching their dates to folder index's
+    # First entry of moodle page is semester start date
     for i in range(len(sec.getsections)):
         prev_summary = sec.getsections[i]['name'].encode(
             "ascii", 'ignore').decode()
@@ -126,42 +129,81 @@ def Local_Files_Check():
                 year=sem_start_year, month=int(month), day=int(date))
             print(date)
             moodle_Sem_Week = date.strftime("%V")
-            # First entry of moodle page is semester week start: define this week of the year as start date
-            # Year has 52 weeks maximum, if the semester week is less then the first entry we passed into next year
+            print(moodle_Sem_Week)
+            # 52 weeks in a year, if the semester week is less then the start date of semester we passed into a new year
             if int(moodle_Sem_Week) < int(sem):
-                date_new = wk_title_string[:i]
-                if len(date_new) == 1:
-                    date_new = "0" + date_new
-                month_new = datetime.datetime.strptime(
-                    wk_title_string[i+1:], "%B").month
-                date_new = datetime.datetime(
-                    year=sem_next_year, month=int(month_new), day=int(date_new))
-                print(date_new)
-                moodle_Sem_Week_new = date_new.strftime("%V")
-                moodle_Sections[moodle_Sem_Week_new] = sections_count
-                print(moodle_Sem_Week_new)
-                print(sem_next_year)
+                date = date.replace(year=sem_next_year)
+                moodle_Sem_Week = date.strftime("%V")
+                moodle_Sections[moodle_Sem_Week] = sections_count
             else:
                 moodle_Sections[moodle_Sem_Week] = sections_count
-
-            print(moodle_Sem_Week)
-            print("\n")
-    pprint(moodle_Sections)
     # Scan local files
     for i in os.scandir():
         if i.is_dir() and "wk" in i.name:
             # Only files within folders containing "wk" name convention
             local_wk_index = ''.join([n for n in i.name if n.isdigit()])
+            print(":::::", local_wk_index)
+            Moodle_Update_list = {}
             for f in os.scandir(i.path):
                 href_link = os.path.abspath(".") + f.path.lstrip(".")
                 # Only files ending with .html or .pdf are valid
                 if any(n in href_link for n in [".html", ".pdf"]):
-                    if ".html" in href_link:
-                        soup = BeautifulSoup(open(href_link), "html.parser")
-                        title = soup.find('title').string.encode(
-                            'ascii', 'ignore').decode()
-                        real_week_index = int(sem) + (int(local_wk_index) - 1)
-                        print(real_week_index)
+                    # Parsing the local files index to match with moodle dates.
+                    # Wk1 will match with the first date in moodle
+                    real_week_index = int(sem) + (int(local_wk_index) - 1)
+                    print("::", real_week_index)
+                    for sections in moodle_Sections:
+                        print(int(sections), ":", real_week_index)
+                        if int(sections) == real_week_index:
+                            print("->>", href_link)
+                            if ".html" in href_link:
+                                soup = BeautifulSoup(
+                                    open(href_link), "html.parser")
+                                title = soup.find('title').string.encode(
+                                    'ascii', 'ignore').decode()
+                                Moodle_Update_list[title] = href_link
+                            else:
+                                Moodle_Update_list[f.name] = href_link
+                        else:
+                            pass
+            for key in list(Class_Recordings):
+                key_filtered = re.search("wk(\d+)", key)
+                if key_filtered.group() == "wk"+str(real_week_index):
+                    Moodle_Update_list[key[5:]] = Class_Recordings[key]
+                    Class_Recordings.pop(key)
+            else:
+                pass
+            pprint(moodle_Sections)
+            print(" list:", Moodle_Update_list)
+            Moodle_Updater(local_wk_index, Moodle_Update_list)
+
+
+def Moodle_Updater(section_Num, update_List):
+    # Get all sections of the course.
+    sec = LocalGetSections(courseid)
+    prev_summary = sec.getsections[int(section_Num)]['summary']
+    #  Assemble the payload
+    data = [{'type': 'num', 'section': 0, 'summary': '', 'summaryformat': 1, 'visible': 1,
+             'highlight': 0, 'sectionformatoptions': [{'name': 'level', 'value': '1'}]}]
+    for items in update_List:
+        print("starting summary:", prev_summary)
+        print(data[0]["summary"])
+        print("--->", items)
+        print("-->", update_List[items])
+        # Assemble the correct summary
+        summary = '<a href=' + \
+            str(update_List[items]) + '>' + str(items) + '</a><br>'
+        if summary in prev_summary:
+            print(" --------------- ")
+            print("didnt upload")
+        else:
+            print("  @@@@@@@@@@@@   ")
+            # Assign the correct summary
+            data[0]['summary'] += ""
+            data[0]['section'] = section_Num
+    # Write the data back to Moodle
+    sec_write = LocalUpdateSections(courseid, data)
+    sec = LocalGetSections(courseid)
 
 
 def Pull_Class_Recording(URL):
