@@ -25,8 +25,10 @@ URL = "https://034f8a1dcb5c.eu.ngrok.io"
 ENDPOINT = "/webservice/rest/server.php"
 Recordings_URL = "https://drive.google.com/drive/folders/1pFHUrmpLv9gEJsvJYKxMdISuQuQsd_qX"
 courseid = "20"
-sem1_start_week = "39"
-sem2_start_week = "1"
+# Semester Start
+# Format dates as year-month-day
+sem1_start_week = "2020-09-28"
+sem2_start_week = "2021-01-04"
 
 
 ################################################
@@ -88,6 +90,99 @@ class LocalUpdateSections(object):
 def Local_Files_Check():
     # Checking directory name to identify semester 1 or semester 2 [OOAPP , OOAPP2]
     if not any(d.isdigit() for d in basename(os.path.abspath("."))):
+        month = datetime.datetime.strptime(sem1_start_week, '%Y-%m-%d')
+        sem = month.strftime("%V")
+        sem_start_year = int(sem1_start_week[:4])
+    else:
+        month = datetime.datetime.strptime(sem2_start_week, '%Y-%m-%d')
+        sem = month.strftime("%V")
+        sem_start_year = int(sem2_start_week[:4])
+    sem_next_year = sem_start_year + 1
+    # Store all recordings from google drive in a dict
+    Class_Recordings = Pull_Class_Recording(Recordings_URL)
+    pprint(Class_Recordings)
+    # Get all sections of moodle
+    sec = LocalGetSections(courseid)
+    moodle_Sections = {}
+    sections_count = 0
+    for i in range(len(sec.getsections)):
+        prev_summary = sec.getsections[i]['name'].encode(
+            "ascii", 'ignore').decode()
+        title_week = re.search(r"\d+\s\w+", prev_summary)
+        if title_week != None:
+            sections_count += 1
+            wk_title_string = str(title_week.group())
+            i = wk_title_string.find(" ")
+            date = wk_title_string[:i]
+            if len(date) == 1:
+                date = "0" + date
+            month = datetime.datetime.strptime(
+                wk_title_string[i+1:], "%B").month
+            if len(str(month)) == 1:
+                month = '0' + str(month)
+            year = datetime.datetime.now().year
+            section_title_parsed = str(year)+"-"+str(month)+"-"+str(date)
+            date = datetime.datetime(
+                year=sem_start_year, month=int(month), day=int(date))
+            print(date)
+            moodle_Sem_Week = date.strftime("%V")
+            # First entry of moodle page is semester week start: define this week of the year as start date
+            # Year has 52 weeks maximum, if the semester week is less then the first entry we passed into next year
+            if int(moodle_Sem_Week) < int(sem):
+                date_new = wk_title_string[:i]
+                if len(date_new) == 1:
+                    date_new = "0" + date_new
+                month_new = datetime.datetime.strptime(
+                    wk_title_string[i+1:], "%B").month
+                date_new = datetime.datetime(
+                    year=sem_next_year, month=int(month_new), day=int(date_new))
+                print(date_new)
+                moodle_Sem_Week_new = date_new.strftime("%V")
+                moodle_Sections[moodle_Sem_Week_new] = sections_count
+                print(moodle_Sem_Week_new)
+                print(sem_next_year)
+            else:
+                moodle_Sections[moodle_Sem_Week] = sections_count
+
+            print(moodle_Sem_Week)
+            print("\n")
+    pprint(moodle_Sections)
+    # Scan local files
+    for i in os.scandir():
+        if i.is_dir() and "wk" in i.name:
+            # Only files within folders containing "wk" name convention
+            local_wk_index = ''.join([n for n in i.name if n.isdigit()])
+            for f in os.scandir(i.path):
+                href_link = os.path.abspath(".") + f.path.lstrip(".")
+                # Only files ending with .html or .pdf are valid
+                if any(n in href_link for n in [".html", ".pdf"]):
+                    if ".html" in href_link:
+                        soup = BeautifulSoup(open(href_link), "html.parser")
+                        title = soup.find('title').string.encode(
+                            'ascii', 'ignore').decode()
+                        real_week_index = int(sem) + (int(local_wk_index) - 1)
+                        print(real_week_index)
+
+
+def Pull_Class_Recording(URL):
+    response = urlopen(URL)
+    soup = BeautifulSoup(response, 'lxml')
+    video = soup.find_all('div', class_='Q5txwe')
+    vids = {}
+    for i in reversed(video):
+        vid_title = i.text.encode('ascii', 'ignore').decode()
+        month = datetime.datetime.strptime(vid_title[:10], '%Y-%m-%d')
+        sem_week = month.strftime("%V")
+        if sem_week[0] == "0":
+            sem_week = sem_week[1]
+        vids[("wk" + sem_week + " recording " + vid_title[:24])
+             ] = 'https://drive.google.com/file/d/' + i.parent.parent.parent.parent.attrs['data-id']
+    return vids
+
+
+def Local_Files_Checks():
+    # Checking directory name to identify semester 1 or semester 2 [OOAPP , OOAPP2]
+    if not any(d.isdigit() for d in basename(os.path.abspath("."))):
         print(basename(os.path.abspath(".")) + " - semester 1")
         sem = sem1_start_week
     else:
@@ -107,12 +202,12 @@ def Local_Files_Check():
                         soup = BeautifulSoup(open(href_link), "html.parser")
                         title = soup.find('title').string.encode(
                             'ascii', 'ignore').decode()
-                        Moodle_Update(sem, int(wk_index), href_link, title)
+                        Moodle_Update(sem, sem_wk, href_link, title)
                         if "wk"+wk_index not in recordings_Checklist:
                             recordings_Checklist.append("wk"+wk_index)
 
                     else:
-                        Moodle_Update(sem, int(wk_index), href_link, f.name)
+                        Moodle_Update(sem, sem_wk, href_link, f.name)
                         if "wk"+wk_index not in recordings_Checklist:
                             recordings_Checklist.append("wk"+wk_index)
     Pull_Class_Recordings(sem, Recordings_URL, recordings_Checklist)
@@ -122,6 +217,7 @@ def Moodle_Update(Sem, WeekNum, URL, Title):
     # Get all sections of the course.
     sec = LocalGetSections(courseid)
     prev_summary = sec.getsections[WeekNum]['summary']
+    print(sec.getsections[1]["name"])
     # Split the section name by dash and convert the date into the timestamp, it takes the current year, so think of a way for making sure it has the correct year!
     month = parser.parse(list(sec.getsections)[WeekNum]['name'].split('-')[0])
     # Extract the week number from the start of the calendar year
@@ -171,3 +267,4 @@ def Pull_Class_Recordings(Sem, URL, record_Checklist):
 
 # Pull_Class_Recordings(Recordings_URL)
 Local_Files_Check()
+# Moodle_Update(1, 1, 1, 1)
