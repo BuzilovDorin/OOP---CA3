@@ -85,7 +85,7 @@ class LocalUpdateSections(object):
 
 def Local_Files_Check():
     # Checking directory name to identify semester 1 or semester 2 [ooapp , ooapp2]
-    # Getting start date of semester
+    # Getting start date of semester.
     if not any(d.isdigit() for d in basename(os.path.abspath("."))):
         month = datetime.datetime.strptime(sem1_start_week, '%Y-%m-%d')
         sem = month.strftime("%V")
