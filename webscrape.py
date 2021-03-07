@@ -122,9 +122,7 @@ def Local_Files_Check():
             section_title_parsed = str(year)+"-"+str(month)+"-"+str(date)
             date = datetime.datetime(
                 year=sem_start_year, month=int(month), day=int(date))
-            print(date)
             moodle_Sem_Week = date.strftime("%V")
-            print(moodle_Sem_Week)
             # 52 weeks in a year, if the semester week is less then the start date of semester we passed into a new year
             if int(moodle_Sem_Week) < int(sem):
                 date = date.replace(year=sem_next_year)
@@ -137,7 +135,6 @@ def Local_Files_Check():
         if i.is_dir() and "wk" in i.name:
             # Only files within folders containing "wk" name convention
             local_wk_index = ''.join([n for n in i.name if n.isdigit()])
-            print(":::::", local_wk_index)
             Moodle_Update_list = {}
             real_week = 0
             for f in os.scandir(i.path):
@@ -147,9 +144,7 @@ def Local_Files_Check():
                     # Parsing the local files index to match with moodle dates.
                     # Wk1 will match with the first date in moodle
                     real_week_index = int(sem) + (int(local_wk_index) - 1)
-                    print("::", real_week_index)
                     for sections in moodle_Sections:
-                        print(int(sections), ":", real_week_index)
                         if int(sections) == real_week_index:
                             real_week = moodle_Sections[sections]
                             print("->>", href_link)
@@ -181,12 +176,6 @@ def Moodle_Updater(section_Num, update_List):
     data = [{'type': 'num', 'section': 0, 'summary': '', 'summaryformat': 1, 'visible': 1,
              'highlight': 0, 'sectionformatoptions': [{'name': 'level', 'value': '1'}]}]
     for items in update_List:
-        print("starting summary:", prev_summary)
-        print(data[0]["summary"])
-        print("--->", items)
-        print("-->", update_List[items])
-        # input("#1")
-        # Assemble the correct summary
         summary = '<a href=' + \
             str(update_List[items]) + '>' + str(items) + '</a><br>'
         if summary in prev_summary:
@@ -196,7 +185,6 @@ def Moodle_Updater(section_Num, update_List):
             prev_summary += summary
             data[0]['section'] = section_Num
         print("sum:", data[0]["summary"])
-        # input("#2")
     # Write the data back to Moodle
     data[0]['summary'] = prev_summary
     sec_write = LocalUpdateSections(courseid, data)
@@ -217,91 +205,6 @@ def Pull_Class_Recording(URL):
         vids[("wk" + sem_week + " recording " + vid_title[:24])
              ] = 'https://drive.google.com/file/d/' + i.parent.parent.parent.parent.attrs['data-id']
     return vids
-
-
-def Local_Files_Checks():
-    # Checking directory name to identify semester 1 or semester 2 [OOAPP , OOAPP2]
-    if not any(d.isdigit() for d in basename(os.path.abspath("."))):
-        print(basename(os.path.abspath(".")) + " - semester 1")
-        sem = sem1_start_week
-    else:
-        print(basename(os.path.abspath(".")) + " - semester 2")
-        sem = sem2_start_week
-    # Scan local files
-    recordings_Checklist = []
-    for i in os.scandir():
-        if i.is_dir() and "wk" in i.name:
-            # Only files within folders containing "wk" name convention
-            wk_index = ''.join([n for n in i.name if n.isdigit()])
-            for f in os.scandir(i.path):
-                href_link = os.path.abspath(".") + f.path.lstrip(".")
-                # Only files ending with .html or .pdf are valid
-                if any(n in href_link for n in [".html", ".pdf"]):
-                    if ".html" in href_link:
-                        soup = BeautifulSoup(open(href_link), "html.parser")
-                        title = soup.find('title').string.encode(
-                            'ascii', 'ignore').decode()
-                        Moodle_Update(sem, sem_wk, href_link, title)
-                        if "wk"+wk_index not in recordings_Checklist:
-                            recordings_Checklist.append("wk"+wk_index)
-
-                    else:
-                        Moodle_Update(sem, sem_wk, href_link, f.name)
-                        if "wk"+wk_index not in recordings_Checklist:
-                            recordings_Checklist.append("wk"+wk_index)
-    Pull_Class_Recordings(sem, Recordings_URL, recordings_Checklist)
-
-
-def Moodle_Update(Sem, WeekNum, URL, Title):
-    # Get all sections of the course.
-    sec = LocalGetSections(courseid)
-    prev_summary = sec.getsections[WeekNum]['summary']
-    print(sec.getsections[1]["name"])
-    # Split the section name by dash and convert the date into the timestamp, it takes the current year, so think of a way for making sure it has the correct year!
-    month = parser.parse(list(sec.getsections)[WeekNum]['name'].split('-')[0])
-    # Extract the week number from the start of the calendar year
-    sem_week = month.strftime("%V")
-    #  Assemble the payload
-    data = [{'type': 'num', 'section': 0, 'summary': '', 'summaryformat': 1, 'visible': 1,
-             'highlight': 0, 'sectionformatoptions': [{'name': 'level', 'value': '1'}]}]
-    # Assemble the correct summary
-    summary = '<a href=' + URL + '>' + Title + '</a><br>'
-    if summary in prev_summary:
-        # If the summary already contains this file then just skip to the next file otherwise update
-        pass
-    else:
-        # Assign the correct summary
-        data[0]['summary'] = prev_summary + ' ' + summary
-        # Set the correct section number
-        data[0]['section'] = WeekNum
-        # Write the data back to Moodle
-        sec_write = LocalUpdateSections(courseid, data)
-        sec = LocalGetSections(courseid)
-        print(
-            "After:"+json.dumps(sec.getsections[WeekNum]['summary'], indent=4, sort_keys=True))
-
-
-def Pull_Class_Recordings(Sem, URL, record_Checklist):
-    response = urlopen(URL)
-    soup = BeautifulSoup(response, 'lxml')
-    video = soup.find_all('div', class_='Q5txwe')
-    vids = {}
-    for i in reversed(video):
-        vid_title = i.text.encode('ascii', 'ignore').decode()
-        month = datetime.datetime.strptime(vid_title[:10], '%Y-%m-%d')
-        sem_week = month.strftime("%V")
-        if sem_week[0] == "0":
-            sem_week = sem_week[1]
-        vids[("wk" + sem_week + " recording " + vid_title[:24])
-             ] = 'https://drive.google.com/file/d/' + i.parent.parent.parent.parent.attrs['data-id']
-    for record in record_Checklist:
-        for key in list(vids):
-            key_filtered = re.search("wk(\d+)", key)
-            if key_filtered.group() in record:
-                Moodle_Update(Sem, int(record[2:]), vids[key], key)
-                vids.pop(key)
-            else:
-                pass
 
 
 Local_Files_Check()
