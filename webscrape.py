@@ -190,10 +190,8 @@ def Moodle_Updater(section_Num, update_List):
         summary = '<a href=' + \
             str(update_List[items]) + '>' + str(items) + '</a><br>'
         if summary in prev_summary:
-            print(" --------------- ")
-            print("didnt upload.")
+            pass
         else:
-            print("  @@@@@@@@@@@@   ")
             # Assign the correct summary
             prev_summary += summary
             data[0]['section'] = section_Num
