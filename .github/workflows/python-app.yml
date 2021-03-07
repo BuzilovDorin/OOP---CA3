@@ -6,13 +6,12 @@ name: Python application
 on: push
 
 jobs:
-  job1:
-    name: Update Moodle
+  build:
     runs-on: windows-latest
     steps:
-      with:
-         python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
-         architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
-       - run: python webscrape.py
+      - name: Moodle Update
+        with:
+          architecture: x64
+      - run: python webscrape.py
 
   
