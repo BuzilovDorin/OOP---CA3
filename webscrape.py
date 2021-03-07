@@ -169,7 +169,7 @@ def Local_Files_Check():
 
 
 def Moodle_Updater(section_Num, update_List):
-    # Get all sections of the course.
+    # Get all sections of the course
     sec = LocalGetSections(courseid)
     prev_summary = sec.getsections[int(section_Num)]['summary']
     #  Assemble the payload
