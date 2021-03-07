@@ -13,7 +13,7 @@ import re
 ################################################
 # Module variables to connect to moodle api:
 # Insert token and URL for your site here.
-# Insert URL for class recordings here
+# Insert URL for class recordings here.
 # Define your unique semester start dates here.
 ################################################
 KEY = "8cc87cf406775101c2df87b07b3a170d"
