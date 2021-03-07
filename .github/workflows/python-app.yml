@@ -15,8 +15,8 @@ jobs:
         with:
           architecture: x64
       - run:  | 
+            python webscrape.py
             pip install --user twine
             python -m twine --help
-            python webscrape.py
 
   
