@@ -144,6 +144,7 @@ def Local_Files_Check():
             local_wk_index = ''.join([n for n in i.name if n.isdigit()])
             print(":::::", local_wk_index)
             Moodle_Update_list = {}
+            real_week = 0
             for f in os.scandir(i.path):
                 href_link = os.path.abspath(".") + f.path.lstrip(".")
                 # Only files ending with .html or .pdf are valid
@@ -155,6 +156,7 @@ def Local_Files_Check():
                     for sections in moodle_Sections:
                         print(int(sections), ":", real_week_index)
                         if int(sections) == real_week_index:
+                            real_week = moodle_Sections[sections]
                             print("->>", href_link)
                             if ".html" in href_link:
                                 soup = BeautifulSoup(
@@ -169,13 +171,13 @@ def Local_Files_Check():
             for key in list(Class_Recordings):
                 key_filtered = re.search("wk(\d+)", key)
                 if key_filtered.group() == "wk"+str(real_week_index):
-                    Moodle_Update_list[key[5:]] = Class_Recordings[key]
+                    Moodle_Update_list[key[4:]] = Class_Recordings[key]
                     Class_Recordings.pop(key)
             else:
                 pass
             pprint(moodle_Sections)
             print(" list:", Moodle_Update_list)
-            Moodle_Updater(local_wk_index, Moodle_Update_list)
+            Moodle_Updater(real_week, Moodle_Update_list)
 
 
 def Moodle_Updater(section_Num, update_List):
