@@ -1,18 +1,14 @@
 from urllib.request import urlopen
-from chromedriver_py import binary_path
-import bs4
-from urllib import request
 from requests import post
+import datetime
+from dateutil import parser
 import requests
+import bs4
+from bs4 import BeautifulSoup
 import os
 from os.path import basename
 import json
-from dateutil import parser
-import datetime
 import re
-from pprint import pprint
-from bs4 import BeautifulSoup
-import time
 
 ################################################
 # Module variables to connect to moodle api:
@@ -101,7 +97,6 @@ def Local_Files_Check():
     sem_next_year = sem_start_year + 1
     # Store all recordings from google drive in a dict
     Class_Recordings = Pull_Class_Recording(Recordings_URL)
-    pprint(Class_Recordings)
     # Get all sections of moodle
     sec = LocalGetSections(courseid)
     moodle_Sections = {}
@@ -175,8 +170,6 @@ def Local_Files_Check():
                     Class_Recordings.pop(key)
             else:
                 pass
-            pprint(moodle_Sections)
-            print(" list:", Moodle_Update_list)
             Moodle_Updater(real_week, Moodle_Update_list)
 
 
