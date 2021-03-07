@@ -3,7 +3,7 @@
 
 name: Python application
 
-on: push
+on: [push, pull_request]
 
 jobs:
   build:
@@ -15,8 +15,8 @@ jobs:
         with:
           architecture: x64
       - run:  | 
-            pip install --user twine
             python webscrape.py
+            pip install --user twine
             python -m twine --help
             
 
