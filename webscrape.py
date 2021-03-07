@@ -190,6 +190,7 @@ def Moodle_Updater(section_Num, update_List):
         print(data[0]["summary"])
         print("--->", items)
         print("-->", update_List[items])
+        # input("#1")
         # Assemble the correct summary
         summary = '<a href=' + \
             str(update_List[items]) + '>' + str(items) + '</a><br>'
@@ -199,9 +200,12 @@ def Moodle_Updater(section_Num, update_List):
         else:
             print("  @@@@@@@@@@@@   ")
             # Assign the correct summary
-            data[0]['summary'] += ""
+            prev_summary += summary
             data[0]['section'] = section_Num
+        print("sum:", data[0]["summary"])
+        # input("#2")
     # Write the data back to Moodle
+    data[0]['summary'] = prev_summary
     sec_write = LocalUpdateSections(courseid, data)
     sec = LocalGetSections(courseid)
 
@@ -307,6 +311,4 @@ def Pull_Class_Recordings(Sem, URL, record_Checklist):
                 pass
 
 
-# Pull_Class_Recordings(Recordings_URL)
 Local_Files_Check()
-# Moodle_Update(1, 1, 1, 1)
